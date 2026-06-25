@@ -1,4 +1,5 @@
 import Sidebar from './components/Sidebar'
+import AuthBar from './components/AuthBar'
 import Dashboard from './pages/Dashboard'
 import Campaigns from './pages/Campaigns'
 import Analytics from './pages/Analytics'
@@ -11,7 +12,14 @@ export default function App() {
   return (
     <div className="flex min-h-screen bg-gray-950">
       <Sidebar view={store.view} setView={store.setView} setIsCreating={store.setIsCreating} />
-      <main className="flex-1 overflow-auto">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="h-14 border-b border-gray-800 bg-gray-900/80 backdrop-blur flex items-center justify-between px-6 shrink-0">
+          <div className="text-sm text-gray-500">
+            Яндекс.Директ — Marketing Agent
+          </div>
+          <AuthBar />
+        </header>
+        <main className="flex-1 overflow-auto">
         {store.view === 'dashboard' && (
           <Dashboard
             campaigns={store.campaigns}
@@ -52,7 +60,8 @@ export default function App() {
             campaigns={store.campaigns}
           />
         )}
-      </main>
+        </main>
+      </div>
     </div>
   )
 }
