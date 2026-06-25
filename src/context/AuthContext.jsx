@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 
 const AuthContext = createContext(null)
 
-const YANDEX_CLIENT_ID = import.meta.env.VITE_YANDEX_CLIENT_ID || 'YOUR_CLIENT_ID'
+const YANDEX_CLIENT_ID = import.meta.env.VITE_YANDEX_CLIENT_ID || 'c67a37eae4b04ce0bc5507f02d20f2cb'
 const REDIRECT_URI = window.location.origin
 
 export function AuthProvider({ children }) {
