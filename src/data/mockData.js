@@ -1,0 +1,157 @@
+export const INITIAL_CAMPAIGNS = [
+  {
+    id: 'c1',
+    name: 'Поиск — Главная',
+    type: 'search',
+    status: 'active',
+    budget: 15000,
+    spent: 9240,
+    impressions: 48320,
+    clicks: 1824,
+    conversions: 87,
+    revenue: 261000,
+    cpc: 5.07,
+    cpm: 191.2,
+    cpo: 106.2,
+    cr: 4.77,
+    roas: 28.25,
+    history: generateHistory(15000, 9240, 30),
+  },
+  {
+    id: 'c2',
+    name: 'РСЯ — Ретаргетинг',
+    type: 'display',
+    status: 'active',
+    budget: 8000,
+    spent: 7910,
+    impressions: 124500,
+    clicks: 892,
+    conversions: 31,
+    revenue: 93000,
+    cpc: 8.87,
+    cpm: 63.5,
+    cpo: 255.2,
+    cr: 3.47,
+    roas: 11.76,
+    history: generateHistory(8000, 7910, 30),
+  },
+  {
+    id: 'c3',
+    name: 'Смарт-баннеры',
+    type: 'smart',
+    status: 'active',
+    budget: 12000,
+    spent: 5430,
+    impressions: 89700,
+    clicks: 2140,
+    conversions: 124,
+    revenue: 496000,
+    cpc: 2.54,
+    cpm: 60.5,
+    cpo: 43.8,
+    cr: 5.79,
+    roas: 91.34,
+    history: generateHistory(12000, 5430, 30),
+  },
+  {
+    id: 'c4',
+    name: 'Брендовый поиск',
+    type: 'search',
+    status: 'paused',
+    budget: 5000,
+    spent: 1200,
+    impressions: 12400,
+    clicks: 680,
+    conversions: 45,
+    revenue: 135000,
+    cpc: 1.76,
+    cpm: 96.8,
+    cpo: 26.7,
+    cr: 6.62,
+    roas: 112.5,
+    history: generateHistory(5000, 1200, 30),
+  },
+  {
+    id: 'c5',
+    name: 'Медийная — Охват',
+    type: 'media',
+    status: 'active',
+    budget: 20000,
+    spent: 18700,
+    impressions: 520000,
+    clicks: 3100,
+    conversions: 58,
+    revenue: 116000,
+    cpc: 6.03,
+    cpm: 35.96,
+    cpo: 322.4,
+    cr: 1.87,
+    roas: 6.2,
+    history: generateHistory(20000, 18700, 30),
+  },
+]
+
+function generateHistory(budget, spent, days) {
+  const result = []
+  for (let i = days; i >= 0; i--) {
+    const date = new Date()
+    date.setDate(date.getDate() - i)
+    const dailySpent = (spent / days) * (0.7 + Math.random() * 0.6)
+    const dailyClicks = Math.floor(dailySpent / (3 + Math.random() * 5))
+    const dailyConversions = Math.floor(dailyClicks * (0.03 + Math.random() * 0.07))
+    result.push({
+      date: date.toLocaleDateString('ru', { day: '2-digit', month: '2-digit' }),
+      spend: Math.round(dailySpent),
+      clicks: dailyClicks,
+      conversions: dailyConversions,
+      cpc: dailyClicks > 0 ? +(dailySpent / dailyClicks).toFixed(2) : 0,
+    })
+  }
+  return result
+}
+
+export const AGENT_RECOMMENDATIONS = [
+  {
+    id: 'r1',
+    campaignId: 'c2',
+    type: 'warning',
+    title: 'Высокий CPO в РСЯ',
+    message: 'CPO кампании "РСЯ — Ретаргетинг" в 2.4x выше целевого. Рекомендую снизить бюджет на 30% и перераспределить в "Смарт-баннеры".',
+    action: 'redistribute',
+    delta: -2400,
+    targetCampaignId: 'c3',
+    applied: false,
+  },
+  {
+    id: 'r2',
+    campaignId: 'c3',
+    type: 'success',
+    title: 'Высокий ROAS у Смарт-баннеров',
+    message: 'ROAS 91x — отличный результат. Увеличь бюджет на 40% для масштабирования.',
+    action: 'increase',
+    delta: +4800,
+    applied: false,
+  },
+  {
+    id: 'r3',
+    campaignId: 'c5',
+    type: 'danger',
+    title: 'Медийная кампания убыточна',
+    message: 'ROAS 6.2x ниже порога окупаемости. Рекомендую приостановить или пересмотреть креативы.',
+    action: 'pause',
+    delta: 0,
+    applied: false,
+  },
+  {
+    id: 'r4',
+    campaignId: 'c4',
+    type: 'info',
+    title: 'Брендовый поиск на паузе',
+    message: 'ROAS 112x — лучший показатель портфеля. Возобнови кампанию и увеличь бюджет.',
+    action: 'resume',
+    delta: +3000,
+    applied: false,
+  },
+]
+
+export const TOTAL_BUDGET = 60000
