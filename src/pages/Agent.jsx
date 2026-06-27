@@ -14,6 +14,7 @@ const ACTION_LABELS = {
   increase: 'Увеличить бюджет',
   pause: 'Приостановить',
   resume: 'Возобновить',
+  review: 'Проверить вручную',
 }
 
 function fmtRub(n) {
