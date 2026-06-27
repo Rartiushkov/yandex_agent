@@ -28,10 +28,41 @@ npm run dev
 
 - `VITE_YANDEX_CLIENT_ID` - Client ID приложения Яндекса
 - `VITE_YANDEX_REDIRECT_URI` - точный адрес возврата после логина
+- `VITE_DIRECT_API_BASE_URL` - URL backend-коннектора, который ходит в Yandex Direct API
 - `VITE_YANDEX_SCOPES` - набор прав OAuth
 
 ## Важное ограничение
 
 GitHub Pages подходит только для фронтенда. Для реальных вызовов `Яндекс.Директ API`
-из браузера обычно нужен серверный прокси или backend, потому что сам API не
-предназначен для прямого безопасного управления рекламой из статического клиента.
+из браузера нужен серверный прокси или backend-коннектор. В этом проекте фронтенд
+умеет работать с таким коннектором через `VITE_DIRECT_API_BASE_URL`, но сам backend
+нужно поднять отдельно.
+
+## Контракт backend-коннектора
+
+Если `VITE_DIRECT_API_BASE_URL` задан, фронтенд ожидает:
+
+- `GET /campaigns` - вернуть `{ "campaigns": [...] }`
+- `POST /campaigns/sync` - обновить данные и вернуть `{ "campaigns": [...] }`
+
+Каждая кампания в ответе:
+
+```json
+{
+  "id": 123,
+  "name": "Search campaign",
+  "type": "search",
+  "status": "active",
+  "budget": 15000,
+  "stats": {
+    "spent": 3000,
+    "impressions": 10000,
+    "clicks": 200,
+    "conversions": 10,
+    "revenue": 24000
+  },
+  "history": [
+    { "date": "01.01", "spend": 500, "clicks": 25, "conversions": 2, "cpc": 20 }
+  ]
+}
+```

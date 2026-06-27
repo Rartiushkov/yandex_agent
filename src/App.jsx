@@ -20,6 +20,25 @@ export default function App() {
           <AuthBar />
         </header>
         <main className="flex-1 overflow-auto">
+        <div className="px-6 pt-4">
+          <div className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${
+            store.dataSource === 'direct'
+              ? 'border-green-500/30 bg-green-500/10 text-green-300'
+              : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300'
+          }`}>
+            <span className="font-semibold">
+              {store.dataSource === 'direct' ? 'Direct connector' : 'Demo mode'}
+            </span>
+            <span>
+              {store.dataSource === 'direct'
+                ? 'Данные загружаются из backend-коннектора.'
+                : 'Агент использует mock-данные.'}
+            </span>
+            {store.syncError && (
+              <span className="text-red-300">{store.syncError}</span>
+            )}
+          </div>
+        </div>
         {store.view === 'dashboard' && (
           <Dashboard
             campaigns={store.campaigns}
