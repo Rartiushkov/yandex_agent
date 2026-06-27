@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 const AuthContext = createContext(null)
 
 const YANDEX_CLIENT_ID = import.meta.env.VITE_YANDEX_CLIENT_ID || 'c67a37eae4b04ce0bc5507f02d20f2cb'
-const YANDEX_SCOPES = import.meta.env.VITE_YANDEX_SCOPES || 'login:info login:email direct:api'
+const YANDEX_SCOPES = import.meta.env.VITE_YANDEX_SCOPES
 
 function buildRedirectUri() {
   const configured = import.meta.env.VITE_YANDEX_REDIRECT_URI
@@ -74,7 +74,9 @@ export function AuthProvider({ children }) {
     url.searchParams.set('response_type', 'token')
     url.searchParams.set('client_id', YANDEX_CLIENT_ID)
     url.searchParams.set('redirect_uri', REDIRECT_URI)
-    url.searchParams.set('scope', YANDEX_SCOPES)
+    if (YANDEX_SCOPES) {
+      url.searchParams.set('scope', YANDEX_SCOPES)
+    }
     url.searchParams.set('force_confirm', 'yes')
     window.location.href = url.toString()
   }, [])
