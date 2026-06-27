@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import {
+  DIRECT_ENVIRONMENTS,
   exchangeDirectVerificationCode,
   fetchDirectAuthStatus,
   fetchDirectConnectUrl,
   hasDirectConnector,
   logoutDirectSession,
+  setActiveDirectMode,
 } from '../api/directApi'
 
 const AuthContext = createContext(null)
@@ -31,22 +33,38 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [directConnected, setDirectConnected] = useState(false)
-  const [directMode, setDirectMode] = useState('none')
+  const [directMode, setDirectMode] = useState('sandbox')
+  const [directStatuses, setDirectStatuses] = useState({
+    sandbox: { connected: false, source: 'none' },
+    production: { connected: false, source: 'none' },
+  })
 
   const refreshDirectStatus = useCallback(async () => {
     if (!hasDirectConnector()) {
       setDirectConnected(false)
-      setDirectMode('none')
+      setDirectMode('sandbox')
+      setDirectStatuses({
+        sandbox: { connected: false, source: 'none' },
+        production: { connected: false, source: 'none' },
+      })
       return
     }
 
     try {
       const status = await fetchDirectAuthStatus()
       setDirectConnected(Boolean(status.connected))
-      setDirectMode(status.mode || 'none')
+      setDirectMode(status.mode || 'sandbox')
+      setDirectStatuses(status.statuses || {
+        sandbox: { connected: false, source: 'none' },
+        production: { connected: false, source: 'none' },
+      })
     } catch {
       setDirectConnected(false)
-      setDirectMode('none')
+      setDirectMode('sandbox')
+      setDirectStatuses({
+        sandbox: { connected: false, source: 'none' },
+        production: { connected: false, source: 'none' },
+      })
     }
   }, [])
 
@@ -119,16 +137,30 @@ export function AuthProvider({ children }) {
     setUser(null)
     logoutDirectSession().catch(() => {})
     setDirectConnected(false)
-    setDirectMode('none')
+    setDirectMode('sandbox')
+    setDirectStatuses({
+      sandbox: { connected: false, source: 'none' },
+      production: { connected: false, source: 'none' },
+    })
   }, [])
 
-  const getDirectConnectUrl = useCallback(async () => {
-    const payload = await fetchDirectConnectUrl()
+  const getDirectConnectUrl = useCallback(async (mode) => {
+    const payload = await fetchDirectConnectUrl(mode)
     return payload.authorizeUrl
   }, [])
 
-  const connectDirectWithCode = useCallback(async (code) => {
-    await exchangeDirectVerificationCode(code)
+  const connectDirectWithCode = useCallback(async (code, mode) => {
+    await exchangeDirectVerificationCode(code, mode)
+    await refreshDirectStatus()
+  }, [refreshDirectStatus])
+
+  const disconnectDirectMode = useCallback(async (mode) => {
+    await logoutDirectSession(mode)
+    await refreshDirectStatus()
+  }, [refreshDirectStatus])
+
+  const selectDirectMode = useCallback(async (mode) => {
+    await setActiveDirectMode(mode)
     await refreshDirectStatus()
   }, [refreshDirectStatus])
 
@@ -145,8 +177,12 @@ export function AuthProvider({ children }) {
         redirectUri: REDIRECT_URI,
         directConnected,
         directMode,
+        directStatuses,
+        directEnvironments: DIRECT_ENVIRONMENTS,
         getDirectConnectUrl,
         connectDirectWithCode,
+        disconnectDirectMode,
+        selectDirectMode,
         refreshDirectStatus,
       }}
     >

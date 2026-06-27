@@ -1,17 +1,72 @@
 import cors from 'cors'
 import express from 'express'
-import { buildDirectAuthorizeUrl, exchangeVerificationCode, getDirectOauthConfig } from './auth/yandexDirectOAuth.js'
-import { clearSession, createSession, getSession, setSessionCookie } from './auth/sessions.js'
+import { buildDirectAuthorizeUrl, DIRECT_ENVIRONMENTS, exchangeVerificationCode, getDirectOauthMatrix } from './auth/yandexDirectOAuth.js'
+import { clearSession, createSession, getSession, setSessionCookie, updateSession } from './auth/sessions.js'
+import { normalizeDirectMode } from './direct/config.js'
 import { getCampaignSnapshot, resumeCampaigns, suspendCampaigns } from './direct/service.js'
 
-function getToken(req) {
-  if (process.env.YANDEX_DIRECT_MASTER_TOKEN) {
-    return process.env.YANDEX_DIRECT_MASTER_TOKEN
+function emptyDirectState() {
+  return {
+    activeMode: 'sandbox',
+    sandbox: null,
+    production: null,
+  }
+}
+
+function getRequestedMode(req, fallback = 'sandbox') {
+  const bodyMode = req.body?.mode
+  const queryMode = req.query?.mode
+  const headerMode = req.headers['x-direct-environment']
+  const candidate = bodyMode || queryMode || headerMode || fallback
+  return normalizeDirectMode(candidate)
+}
+
+function getMasterToken(mode) {
+  if (mode === 'production') {
+    return process.env.YANDEX_DIRECT_MASTER_TOKEN_PRODUCTION || process.env.YANDEX_DIRECT_MASTER_TOKEN || ''
   }
 
+  return process.env.YANDEX_DIRECT_MASTER_TOKEN_SANDBOX || process.env.YANDEX_DIRECT_MASTER_TOKEN || ''
+}
+
+function readDirectState(req) {
   const session = getSession(req)
-  if (session?.directToken) {
-    return session.directToken
+  if (!session) {
+    return {
+      session: null,
+      direct: emptyDirectState(),
+    }
+  }
+
+  const direct = {
+    ...emptyDirectState(),
+    ...(session.direct || {}),
+  }
+  return { session, direct }
+}
+
+function persistDirectState(res, session, direct) {
+  if (session?.id) {
+    updateSession(session.id, { direct })
+    setSessionCookie(res, session.id)
+    return session.id
+  }
+
+  const sessionId = createSession({ direct })
+  setSessionCookie(res, sessionId)
+  return sessionId
+}
+
+function getToken(req, mode) {
+  const masterToken = getMasterToken(mode)
+  if (masterToken) {
+    return masterToken
+  }
+
+  const { direct } = readDirectState(req)
+  const sessionToken = direct?.[mode]?.accessToken
+  if (sessionToken) {
+    return sessionToken
   }
 
   const authHeader = req.headers.authorization || ''
@@ -40,21 +95,27 @@ export function createApp() {
   app.use(express.json())
 
   app.get('/health', (_req, res) => {
-    const oauthConfig = getDirectOauthConfig()
+    const oauthApps = getDirectOauthMatrix()
     res.json({
       ok: true,
-      sandbox: process.env.YANDEX_DIRECT_USE_SANDBOX === 'true',
+      environments: DIRECT_ENVIRONMENTS,
+      defaultMode: normalizeDirectMode(process.env.YANDEX_DIRECT_DEFAULT_MODE || 'sandbox'),
       hasDefaultClientLogin: Boolean(process.env.YANDEX_DIRECT_CLIENT_LOGIN),
       hasMasterToken: Boolean(process.env.YANDEX_DIRECT_MASTER_TOKEN),
-      hasOauthApp: Boolean(oauthConfig.clientId && oauthConfig.clientSecret),
+      hasMasterTokenSandbox: Boolean(getMasterToken('sandbox')),
+      hasMasterTokenProduction: Boolean(getMasterToken('production')),
+      hasOauthApp: Object.values(oauthApps).some(item => item.configured),
+      oauthApps,
       readOnly: isReadOnlyMode(),
     })
   })
 
-  app.get('/auth/direct/url', (_req, res) => {
+  app.get('/auth/direct/url', (req, res) => {
     try {
+      const mode = getRequestedMode(req, process.env.YANDEX_DIRECT_DEFAULT_MODE || 'sandbox')
       res.json({
-        authorizeUrl: buildDirectAuthorizeUrl(),
+        mode,
+        authorizeUrl: buildDirectAuthorizeUrl(mode),
       })
     } catch (error) {
       res.status(500).json({ error: error.message })
@@ -62,30 +123,46 @@ export function createApp() {
   })
 
   app.get('/auth/direct/status', (req, res) => {
-    const session = getSession(req)
+    const { direct } = readDirectState(req)
+    const statuses = DIRECT_ENVIRONMENTS.reduce((acc, mode) => {
+      acc[mode] = {
+        connected: Boolean(getMasterToken(mode) || direct?.[mode]?.accessToken),
+        source: getMasterToken(mode) ? 'master' : (direct?.[mode]?.accessToken ? 'session' : 'none'),
+      }
+      return acc
+    }, {})
     res.json({
-      connected: Boolean(process.env.YANDEX_DIRECT_MASTER_TOKEN || session?.directToken),
-      mode: process.env.YANDEX_DIRECT_MASTER_TOKEN ? 'master' : (session?.directToken ? 'session' : 'none'),
+      connected: statuses[direct.activeMode]?.connected || false,
+      mode: direct.activeMode || 'sandbox',
+      statuses,
     })
   })
 
   app.post('/auth/direct/exchange', async (req, res) => {
     const code = req.body?.code?.trim()
+    const mode = getRequestedMode(req, process.env.YANDEX_DIRECT_DEFAULT_MODE || 'sandbox')
     if (!code) {
       res.status(400).json({ error: 'Missing verification code' })
       return
     }
 
     try {
-      const payload = await exchangeVerificationCode(code)
-      const sessionId = createSession({
-        directToken: payload.access_token,
-        refreshToken: payload.refresh_token || null,
-      })
-      setSessionCookie(res, sessionId)
+      const payload = await exchangeVerificationCode(code, mode)
+      const { session, direct } = readDirectState(req)
+      const nextDirect = {
+        ...direct,
+        activeMode: mode,
+        [mode]: {
+          accessToken: payload.access_token,
+          refreshToken: payload.refresh_token || null,
+          connectedAt: new Date().toISOString(),
+        },
+      }
+      persistDirectState(res, session, nextDirect)
       res.json({
         ok: true,
         connected: true,
+        mode,
       })
     } catch (error) {
       res.status(error.statusCode || 500).json({
@@ -96,12 +173,46 @@ export function createApp() {
   })
 
   app.post('/auth/direct/logout', (req, res) => {
-    clearSession(req, res)
-    res.json({ ok: true })
+    const requestedMode = req.body?.mode ? getRequestedMode(req) : null
+    const { session, direct } = readDirectState(req)
+
+    if (!session) {
+      res.json({ ok: true })
+      return
+    }
+
+    if (!requestedMode) {
+      clearSession(req, res)
+      res.json({ ok: true, cleared: 'all' })
+      return
+    }
+
+    const nextDirect = {
+      ...direct,
+      [requestedMode]: null,
+    }
+    if (nextDirect.activeMode === requestedMode) {
+      nextDirect.activeMode = requestedMode === 'sandbox' ? 'production' : 'sandbox'
+    }
+
+    persistDirectState(res, session, nextDirect)
+    res.json({ ok: true, cleared: requestedMode, mode: nextDirect.activeMode })
+  })
+
+  app.post('/auth/direct/active-mode', (req, res) => {
+    const mode = getRequestedMode(req, process.env.YANDEX_DIRECT_DEFAULT_MODE || 'sandbox')
+    const { session, direct } = readDirectState(req)
+    const nextDirect = {
+      ...direct,
+      activeMode: mode,
+    }
+    persistDirectState(res, session, nextDirect)
+    res.json({ ok: true, mode })
   })
 
   async function handleCampaignSnapshot(req, res) {
-    const token = getToken(req)
+    const mode = getRequestedMode(req, readDirectState(req).direct.activeMode)
+    const token = getToken(req, mode)
     if (!token) {
       res.status(401).json({ error: 'Missing Direct API token' })
       return
@@ -113,6 +224,7 @@ export function createApp() {
         clientLogin: getClientLogin(req),
         dateFrom: req.query.dateFrom,
         dateTo: req.query.dateTo,
+        mode,
       })
 
       res.json(snapshot)
@@ -133,7 +245,8 @@ export function createApp() {
       return
     }
 
-    const token = getToken(req)
+    const mode = getRequestedMode(req, readDirectState(req).direct.activeMode)
+    const token = getToken(req, mode)
     if (!token) {
       res.status(401).json({ error: 'Missing Direct API token' })
       return
@@ -147,8 +260,8 @@ export function createApp() {
 
     try {
       const result = action === 'suspend'
-        ? await suspendCampaigns({ token, clientLogin: getClientLogin(req), ids: [campaignId] })
-        : await resumeCampaigns({ token, clientLogin: getClientLogin(req), ids: [campaignId] })
+        ? await suspendCampaigns({ token, clientLogin: getClientLogin(req), ids: [campaignId], mode })
+        : await resumeCampaigns({ token, clientLogin: getClientLogin(req), ids: [campaignId], mode })
 
       res.json({ ok: true, result })
     } catch (error) {

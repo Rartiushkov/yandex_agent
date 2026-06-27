@@ -1,4 +1,4 @@
-import { CAMPAIGNS_ENDPOINT, REPORTS_ENDPOINT } from './config.js'
+import { getDirectEndpoints, normalizeDirectMode } from './config.js'
 import { directJsonRequest, directReportRequest } from './http.js'
 import { buildHistoryMap, buildStatsMap, parseTsv } from './reportParser.js'
 
@@ -39,8 +39,9 @@ function mapType(type) {
   return 'search'
 }
 
-async function fetchCampaigns({ token, clientLogin }) {
-  const response = await directJsonRequest(CAMPAIGNS_ENDPOINT, {
+async function fetchCampaigns({ token, clientLogin, mode }) {
+  const { campaignsEndpoint } = getDirectEndpoints(mode)
+  const response = await directJsonRequest(campaignsEndpoint, {
     token,
     clientLogin,
     payload: {
@@ -55,8 +56,9 @@ async function fetchCampaigns({ token, clientLogin }) {
   return response?.result?.Campaigns || []
 }
 
-async function campaignAction({ token, clientLogin, ids, method }) {
-  return directJsonRequest(CAMPAIGNS_ENDPOINT, {
+async function campaignAction({ token, clientLogin, ids, method, mode }) {
+  const { campaignsEndpoint } = getDirectEndpoints(mode)
+  return directJsonRequest(campaignsEndpoint, {
     token,
     clientLogin,
     payload: {
@@ -70,8 +72,9 @@ async function campaignAction({ token, clientLogin, ids, method }) {
   })
 }
 
-async function fetchCampaignSummary({ token, clientLogin, dateFrom, dateTo }) {
-  const report = await directReportRequest(REPORTS_ENDPOINT, {
+async function fetchCampaignSummary({ token, clientLogin, dateFrom, dateTo, mode }) {
+  const { reportsEndpoint } = getDirectEndpoints(mode)
+  const report = await directReportRequest(reportsEndpoint, {
     token,
     clientLogin,
     payload: {
@@ -92,8 +95,9 @@ async function fetchCampaignSummary({ token, clientLogin, dateFrom, dateTo }) {
   return parseTsv(report)
 }
 
-async function fetchCampaignHistory({ token, clientLogin, dateFrom, dateTo }) {
-  const report = await directReportRequest(REPORTS_ENDPOINT, {
+async function fetchCampaignHistory({ token, clientLogin, dateFrom, dateTo, mode }) {
+  const { reportsEndpoint } = getDirectEndpoints(mode)
+  const report = await directReportRequest(reportsEndpoint, {
     token,
     clientLogin,
     payload: {
@@ -117,7 +121,8 @@ async function fetchCampaignHistory({ token, clientLogin, dateFrom, dateTo }) {
   return parseTsv(report)
 }
 
-export async function getCampaignSnapshot({ token, clientLogin, dateFrom, dateTo }) {
+export async function getCampaignSnapshot({ token, clientLogin, dateFrom, dateTo, mode }) {
+  const normalizedMode = normalizeDirectMode(mode)
   const range = {
     ...defaultDateRange(),
     ...(dateFrom ? { dateFrom } : {}),
@@ -125,9 +130,9 @@ export async function getCampaignSnapshot({ token, clientLogin, dateFrom, dateTo
   }
 
   const [campaigns, summaryRows, historyRows] = await Promise.all([
-    fetchCampaigns({ token, clientLogin }),
-    fetchCampaignSummary({ token, clientLogin, ...range }),
-    fetchCampaignHistory({ token, clientLogin, ...range }),
+    fetchCampaigns({ token, clientLogin, mode: normalizedMode }),
+    fetchCampaignSummary({ token, clientLogin, mode: normalizedMode, ...range }),
+    fetchCampaignHistory({ token, clientLogin, mode: normalizedMode, ...range }),
   ])
 
   const statsMap = buildStatsMap(summaryRows)
@@ -161,15 +166,16 @@ export async function getCampaignSnapshot({ token, clientLogin, dateFrom, dateTo
     meta: {
       dateFrom: range.dateFrom,
       dateTo: range.dateTo,
+      mode: normalizedMode,
       source: 'yandex-direct-api',
     },
   }
 }
 
-export async function suspendCampaigns({ token, clientLogin, ids }) {
-  return campaignAction({ token, clientLogin, ids, method: 'suspend' })
+export async function suspendCampaigns({ token, clientLogin, ids, mode }) {
+  return campaignAction({ token, clientLogin, ids, method: 'suspend', mode: normalizeDirectMode(mode) })
 }
 
-export async function resumeCampaigns({ token, clientLogin, ids }) {
-  return campaignAction({ token, clientLogin, ids, method: 'resume' })
+export async function resumeCampaigns({ token, clientLogin, ids, mode }) {
+  return campaignAction({ token, clientLogin, ids, method: 'resume', mode: normalizeDirectMode(mode) })
 }

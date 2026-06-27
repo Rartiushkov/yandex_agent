@@ -1,9 +1,21 @@
-const isSandbox = process.env.YANDEX_DIRECT_USE_SANDBOX === 'true'
+export function normalizeDirectMode(mode) {
+  return mode === 'production' ? 'production' : 'sandbox'
+}
 
-export const DIRECT_API_BASE = isSandbox
-  ? 'https://api-sandbox.direct.yandex.com/json/v5'
-  : 'https://api.direct.yandex.com/json/v5'
+export function resolveDirectApiBase(mode) {
+  const normalized = normalizeDirectMode(mode)
+  return normalized === 'production'
+    ? 'https://api.direct.yandex.com/json/v5'
+    : 'https://api-sandbox.direct.yandex.com/json/v5'
+}
 
-export const REPORTS_ENDPOINT = `${DIRECT_API_BASE}/reports`
-export const CAMPAIGNS_ENDPOINT = `${DIRECT_API_BASE}/campaigns`
+export function getDirectEndpoints(mode) {
+  const base = resolveDirectApiBase(mode)
+  return {
+    apiBase: base,
+    reportsEndpoint: `${base}/reports`,
+    campaignsEndpoint: `${base}/campaigns`,
+  }
+}
+
 export const REPORT_POLL_LIMIT = Number(process.env.YANDEX_DIRECT_REPORT_POLL_LIMIT || 6)

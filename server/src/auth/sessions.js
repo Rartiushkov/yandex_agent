@@ -47,6 +47,20 @@ export function getSession(req) {
   return { id: sessionId, ...session }
 }
 
+export function updateSession(sessionId, patch) {
+  const current = sessions.get(sessionId)
+  if (!current) return null
+
+  const next = {
+    ...current,
+    ...patch,
+    createdAt: current.createdAt,
+    updatedAt: Date.now(),
+  }
+  sessions.set(sessionId, next)
+  return { id: sessionId, ...next }
+}
+
 export function setSessionCookie(res, sessionId) {
   res.setHeader('Set-Cookie', buildCookieValue(sessionId))
 }

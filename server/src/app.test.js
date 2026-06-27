@@ -7,9 +7,13 @@ vi.mock('./direct/service.js', () => ({
 }))
 
 vi.mock('./auth/yandexDirectOAuth.js', () => ({
-  buildDirectAuthorizeUrl: vi.fn(() => 'https://oauth.yandex.ru/authorize?client_id=test'),
+  DIRECT_ENVIRONMENTS: ['sandbox', 'production'],
+  buildDirectAuthorizeUrl: vi.fn(mode => `https://oauth.yandex.ru/authorize?client_id=${mode}`),
   exchangeVerificationCode: vi.fn(async () => ({ access_token: 'direct-access-token' })),
-  getDirectOauthConfig: vi.fn(() => ({ clientId: 'id', clientSecret: 'secret' })),
+  getDirectOauthMatrix: vi.fn(() => ({
+    sandbox: { clientId: 'sandbox-id', configured: true },
+    production: { clientId: 'production-id', configured: true },
+  })),
 }))
 
 import { createApp } from './app.js'
@@ -64,15 +68,16 @@ describe('server app', () => {
 
     try {
       const address = server.address()
-      const response = await fetch(`http://127.0.0.1:${address.port}/auth/direct/url`)
+      const response = await fetch(`http://127.0.0.1:${address.port}/auth/direct/url?mode=production`)
       const json = await response.json()
       expect(json.authorizeUrl).toContain('oauth.yandex.ru/authorize')
+      expect(json.mode).toBe('production')
     } finally {
       server.close()
     }
   })
 
-  it('exchanges verification code into session', async () => {
+  it('exchanges verification code into mode-specific session', async () => {
     const app = createApp()
     const server = app.listen()
 
@@ -83,12 +88,41 @@ describe('server app', () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code: 'test-code' }),
+        body: JSON.stringify({ code: 'test-code', mode: 'sandbox' }),
       })
       const json = await response.json()
       expect(response.status).toBe(200)
       expect(json.connected).toBe(true)
+      expect(json.mode).toBe('sandbox')
       expect(response.headers.get('set-cookie')).toContain('ya_direct_sid=')
+    } finally {
+      server.close()
+    }
+  })
+
+  it('returns separate statuses for sandbox and production', async () => {
+    const app = createApp()
+    const server = app.listen()
+
+    try {
+      const address = server.address()
+      const exchangeResponse = await fetch(`http://127.0.0.1:${address.port}/auth/direct/exchange`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: 'sandbox-code', mode: 'sandbox' }),
+      })
+      const cookie = exchangeResponse.headers.get('set-cookie')
+      const statusResponse = await fetch(`http://127.0.0.1:${address.port}/auth/direct/status`, {
+        headers: {
+          Cookie: cookie,
+        },
+      })
+      const json = await statusResponse.json()
+      expect(json.mode).toBe('sandbox')
+      expect(json.statuses.sandbox.connected).toBe(true)
+      expect(json.statuses.production.connected).toBe(false)
     } finally {
       server.close()
     }
