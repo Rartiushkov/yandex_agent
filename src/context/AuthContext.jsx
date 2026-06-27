@@ -3,7 +3,20 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 const AuthContext = createContext(null)
 
 const YANDEX_CLIENT_ID = import.meta.env.VITE_YANDEX_CLIENT_ID || 'c67a37eae4b04ce0bc5507f02d20f2cb'
-const REDIRECT_URI = window.location.origin
+const YANDEX_SCOPES = import.meta.env.VITE_YANDEX_SCOPES || 'login:info login:email direct:api'
+
+function buildRedirectUri() {
+  const configured = import.meta.env.VITE_YANDEX_REDIRECT_URI
+
+  if (configured) {
+    return configured
+  }
+
+  const basePath = import.meta.env.BASE_URL || '/'
+  return new URL(basePath, window.location.origin).toString()
+}
+
+const REDIRECT_URI = buildRedirectUri()
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -61,7 +74,7 @@ export function AuthProvider({ children }) {
     url.searchParams.set('response_type', 'token')
     url.searchParams.set('client_id', YANDEX_CLIENT_ID)
     url.searchParams.set('redirect_uri', REDIRECT_URI)
-    url.searchParams.set('scope', 'login:info login:email direct:api')
+    url.searchParams.set('scope', YANDEX_SCOPES)
     url.searchParams.set('force_confirm', 'yes')
     window.location.href = url.toString()
   }, [])
@@ -73,7 +86,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, logout, isDemo: !token }}>
+    <AuthContext.Provider value={{ user, token, loading, error, login, logout, isDemo: !token, redirectUri: REDIRECT_URI }}>
       {children}
     </AuthContext.Provider>
   )

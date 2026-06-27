@@ -43,15 +43,22 @@ export default function AuthBar() {
 
   return (
     <div className="flex items-center gap-2">
-      {isDemo && (
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-400">
-          <WifiOff size={12} />
-          Demo-режим
-        </div>
-      )}
-      {error && (
-        <div className="text-xs text-red-400">{error}</div>
-      )}
+      <div className="hidden lg:flex flex-col items-end mr-1">
+        {isDemo && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-400">
+            <WifiOff size={12} />
+            Demo-режим
+          </div>
+        )}
+        {!user && (
+          <div className="text-[11px] text-gray-500 mt-1">
+            Для запуска рекламы у пользователя должен быть доступ к Direct API
+          </div>
+        )}
+        {error && (
+          <div className="text-xs text-red-400 mt-1">{error}</div>
+        )}
+      </div>
       <button
         onClick={login}
         className="flex items-center gap-2 px-3 py-2 rounded-xl bg-yandex-red text-white text-sm font-medium hover:bg-red-600 transition-all glow-red"
