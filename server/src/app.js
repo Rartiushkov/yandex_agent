@@ -3,6 +3,10 @@ import express from 'express'
 import { getCampaignSnapshot, resumeCampaigns, suspendCampaigns } from './direct/service.js'
 
 function getToken(req) {
+  if (process.env.YANDEX_DIRECT_MASTER_TOKEN) {
+    return process.env.YANDEX_DIRECT_MASTER_TOKEN
+  }
+
   const authHeader = req.headers.authorization || ''
   if (!authHeader.startsWith('Bearer ')) {
     return null
@@ -26,6 +30,7 @@ export function createApp() {
       ok: true,
       sandbox: process.env.YANDEX_DIRECT_USE_SANDBOX === 'true',
       hasDefaultClientLogin: Boolean(process.env.YANDEX_DIRECT_CLIENT_LOGIN),
+      hasMasterToken: Boolean(process.env.YANDEX_DIRECT_MASTER_TOKEN),
     })
   })
 

@@ -36,6 +36,22 @@ describe('server app', () => {
     }
   })
 
+  it('uses master token mode in health response when configured', async () => {
+    process.env.YANDEX_DIRECT_MASTER_TOKEN = 'test-token'
+    const app = createApp()
+    const server = app.listen()
+
+    try {
+      const address = server.address()
+      const response = await fetch(`http://127.0.0.1:${address.port}/health`)
+      const json = await response.json()
+      expect(json.hasMasterToken).toBe(true)
+    } finally {
+      delete process.env.YANDEX_DIRECT_MASTER_TOKEN
+      server.close()
+    }
+  })
+
   it('allows suspend route with token', async () => {
     const app = createApp()
     const server = app.listen()
