@@ -55,6 +55,21 @@ async function fetchCampaigns({ token, clientLogin }) {
   return response?.result?.Campaigns || []
 }
 
+async function campaignAction({ token, clientLogin, ids, method }) {
+  return directJsonRequest(CAMPAIGNS_ENDPOINT, {
+    token,
+    clientLogin,
+    payload: {
+      method,
+      params: {
+        SelectionCriteria: {
+          Ids: ids,
+        },
+      },
+    },
+  })
+}
+
 async function fetchCampaignSummary({ token, clientLogin, dateFrom, dateTo }) {
   const report = await directReportRequest(REPORTS_ENDPOINT, {
     token,
@@ -145,4 +160,12 @@ export async function getCampaignSnapshot({ token, clientLogin, dateFrom, dateTo
       source: 'yandex-direct-api',
     },
   }
+}
+
+export async function suspendCampaigns({ token, clientLogin, ids }) {
+  return campaignAction({ token, clientLogin, ids, method: 'suspend' })
+}
+
+export async function resumeCampaigns({ token, clientLogin, ids }) {
+  return campaignAction({ token, clientLogin, ids, method: 'resume' })
 }

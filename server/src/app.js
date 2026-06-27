@@ -1,6 +1,6 @@
 import cors from 'cors'
 import express from 'express'
-import { getCampaignSnapshot } from './direct/service.js'
+import { getCampaignSnapshot, resumeCampaigns, suspendCampaigns } from './direct/service.js'
 
 function getToken(req) {
   const authHeader = req.headers.authorization || ''
@@ -55,6 +55,36 @@ export function createApp() {
 
   app.get('/campaigns', handleCampaignSnapshot)
   app.post('/campaigns/sync', handleCampaignSnapshot)
+
+  async function handleCampaignAction(req, res, action) {
+    const token = getToken(req)
+    if (!token) {
+      res.status(401).json({ error: 'Missing Bearer token' })
+      return
+    }
+
+    const campaignId = Number(req.params.id)
+    if (!Number.isFinite(campaignId)) {
+      res.status(400).json({ error: 'Invalid campaign id' })
+      return
+    }
+
+    try {
+      const result = action === 'suspend'
+        ? await suspendCampaigns({ token, clientLogin: getClientLogin(req), ids: [campaignId] })
+        : await resumeCampaigns({ token, clientLogin: getClientLogin(req), ids: [campaignId] })
+
+      res.json({ ok: true, result })
+    } catch (error) {
+      res.status(error.statusCode || 500).json({
+        error: error.message,
+        detail: error.detail || null,
+      })
+    }
+  }
+
+  app.post('/campaigns/:id/suspend', (req, res) => handleCampaignAction(req, res, 'suspend'))
+  app.post('/campaigns/:id/resume', (req, res) => handleCampaignAction(req, res, 'resume'))
 
   return app
 }

@@ -1,7 +1,13 @@
 import { useState, useCallback, useEffect } from 'react'
 import { INITIAL_CAMPAIGNS, TOTAL_BUDGET } from '../data/mockData'
 import { useAuth } from '../context/AuthContext'
-import { fetchDirectCampaigns, hasDirectConnector, syncDirectCampaigns } from '../api/directApi'
+import {
+  fetchDirectCampaigns,
+  hasDirectConnector,
+  resumeDirectCampaign,
+  suspendDirectCampaign,
+  syncDirectCampaigns,
+} from '../api/directApi'
 import { adaptDirectCampaigns, getPortfolioBudget } from '../lib/directAdapter'
 import { generateRecommendations } from '../lib/recommendations'
 
@@ -155,9 +161,26 @@ export function useAgentStore() {
     }
   }, [agentRunning, loadDirectCampaigns, log, token])
 
-  const applyRecommendation = useCallback((recId) => {
+  const applyRecommendation = useCallback(async (recId) => {
     const rec = recommendations.find(r => r.id === recId)
     if (!rec || rec.applied) return
+
+    if (token && hasDirectConnector() && (rec.action === 'pause' || rec.action === 'resume')) {
+      try {
+        if (rec.action === 'pause') {
+          await suspendDirectCampaign(token, rec.campaignId)
+        }
+        if (rec.action === 'resume') {
+          await resumeDirectCampaign(token, rec.campaignId)
+        }
+
+        await loadDirectCampaigns({ sync: true })
+      } catch (error) {
+        setSyncError(error.message)
+        log(`Не удалось применить действие в Direct connector: ${error.message}`, 'danger')
+        return
+      }
+    }
 
     setCampaigns(prev => prev.map(c => {
       if (c.id === rec.campaignId) {
@@ -174,7 +197,7 @@ export function useAgentStore() {
 
     setRecommendations(prev => prev.map(r => r.id === recId ? { ...r, applied: true } : r))
     log(`Применена рекомендация: "${rec.title}"`, 'success')
-  }, [recommendations, log])
+  }, [recommendations, loadDirectCampaigns, log, token])
 
   const createCampaign = useCallback((formData) => {
     const newCampaign = {
