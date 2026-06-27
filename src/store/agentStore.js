@@ -146,6 +146,8 @@ export function useAgentStore() {
       const anomalies = newRecs.filter(r => r.type === 'warning' || r.type === 'danger').length
       if (anomalies > 0) {
         log(`Выявлено ${anomalies} аномали${anomalies === 1 ? 'я' : 'и'}. Генерирую рекомендации...`, 'warning')
+      } else if (newRecs.length > 0) {
+        log('Критичных аномалий нет, но есть наблюдения для оптимизации и проверки данных.', 'info')
       } else {
         log('Аномалий не выявлено. Портфель в норме.', 'success')
       }

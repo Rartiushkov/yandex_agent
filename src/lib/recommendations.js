@@ -1,5 +1,18 @@
 export function generateRecommendations(campaigns) {
   const recs = []
+  if (campaigns.length === 0) {
+    return [{
+      id: 'rec_portfolio_empty',
+      campaignId: 'portfolio',
+      type: 'info',
+      title: 'Нет данных для анализа',
+      message: 'В портфеле пока нет кампаний. Создай кампанию в песочнице или подключи импорт из Direct, чтобы агент начал давать рекомендации.',
+      action: 'review',
+      delta: 0,
+      applied: false,
+    }]
+  }
+
   const active = campaigns.filter(c => c.status === 'active')
   const avgROAS = active.length > 0
     ? active.reduce((s, c) => s + c.roas, 0) / active.length
@@ -11,6 +24,58 @@ export function generateRecommendations(campaigns) {
 
   campaigns.forEach(c => {
     if (c.status === 'active') {
+      if (c.impressions === 0 && c.clicks === 0 && c.spent === 0) {
+        recs.push({
+          id: `rec_${c.id}_no_delivery`,
+          campaignId: c.id,
+          type: 'info',
+          title: `Нет показов: ${c.name}`,
+          message: 'Кампания активна, но пока не получила ни показов, ни кликов. Проверь ставки, статус объявлений и наличие тестового трафика в песочнице.',
+          action: 'review',
+          delta: 0,
+          applied: false,
+        })
+      }
+
+      if (c.impressions > 0 && c.clicks === 0) {
+        recs.push({
+          id: `rec_${c.id}_no_clicks`,
+          campaignId: c.id,
+          type: 'warning',
+          title: `Показы без кликов: ${c.name}`,
+          message: `Есть показы (${c.impressions}), но нет кликов. Стоит проверить креатив, заголовок и соответствие запроса объявлению.`,
+          action: 'review',
+          delta: 0,
+          applied: false,
+        })
+      }
+
+      if (c.clicks > 0 && c.clicks < 25 && c.history.length < 3) {
+        recs.push({
+          id: `rec_${c.id}_low_sample`,
+          campaignId: c.id,
+          type: 'info',
+          title: `Мало данных: ${c.name}`,
+          message: `У кампании пока только ${c.clicks} кликов. Для уверенных выводов по эффективности лучше накопить хотя бы 25-30 кликов или несколько дней истории.`,
+          action: 'review',
+          delta: 0,
+          applied: false,
+        })
+      }
+
+      if (c.clicks >= 20 && c.conversions === 0 && c.spent > 0) {
+        recs.push({
+          id: `rec_${c.id}_no_conversions`,
+          campaignId: c.id,
+          type: 'warning',
+          title: `Нет конверсий: ${c.name}`,
+          message: `Кампания уже получила ${c.clicks} кликов и потратила ${Math.round(c.spent)} ₽, но не принесла ни одной конверсии. Проверь цели, посадочную страницу и точность семантики.`,
+          action: 'review',
+          delta: 0,
+          applied: false,
+        })
+      }
+
       if (c.roas > avgROAS * 1.5 && c.spent < c.budget * 0.9) {
         recs.push({
           id: `rec_${c.id}_roas`,
