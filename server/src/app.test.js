@@ -6,6 +6,12 @@ vi.mock('./direct/service.js', () => ({
   resumeCampaigns: vi.fn(async () => ({ result: { processed: [1] } })),
 }))
 
+vi.mock('./auth/yandexDirectOAuth.js', () => ({
+  buildDirectAuthorizeUrl: vi.fn(() => 'https://oauth.yandex.ru/authorize?client_id=test'),
+  exchangeVerificationCode: vi.fn(async () => ({ access_token: 'direct-access-token' })),
+  getDirectOauthConfig: vi.fn(() => ({ clientId: 'id', clientSecret: 'secret' })),
+}))
+
 import { createApp } from './app.js'
 
 describe('server app', () => {
@@ -48,6 +54,42 @@ describe('server app', () => {
       expect(json.hasMasterToken).toBe(true)
     } finally {
       delete process.env.YANDEX_DIRECT_MASTER_TOKEN
+      server.close()
+    }
+  })
+
+  it('returns direct auth url', async () => {
+    const app = createApp()
+    const server = app.listen()
+
+    try {
+      const address = server.address()
+      const response = await fetch(`http://127.0.0.1:${address.port}/auth/direct/url`)
+      const json = await response.json()
+      expect(json.authorizeUrl).toContain('oauth.yandex.ru/authorize')
+    } finally {
+      server.close()
+    }
+  })
+
+  it('exchanges verification code into session', async () => {
+    const app = createApp()
+    const server = app.listen()
+
+    try {
+      const address = server.address()
+      const response = await fetch(`http://127.0.0.1:${address.port}/auth/direct/exchange`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: 'test-code' }),
+      })
+      const json = await response.json()
+      expect(response.status).toBe(200)
+      expect(json.connected).toBe(true)
+      expect(response.headers.get('set-cookie')).toContain('ya_direct_sid=')
+    } finally {
       server.close()
     }
   })

@@ -1,4 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import {
+  exchangeDirectVerificationCode,
+  fetchDirectAuthStatus,
+  fetchDirectConnectUrl,
+  hasDirectConnector,
+  logoutDirectSession,
+} from '../api/directApi'
 
 const AuthContext = createContext(null)
 
@@ -23,6 +30,25 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('ya_token'))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [directConnected, setDirectConnected] = useState(false)
+  const [directMode, setDirectMode] = useState('none')
+
+  const refreshDirectStatus = useCallback(async () => {
+    if (!hasDirectConnector()) {
+      setDirectConnected(false)
+      setDirectMode('none')
+      return
+    }
+
+    try {
+      const status = await fetchDirectAuthStatus()
+      setDirectConnected(Boolean(status.connected))
+      setDirectMode(status.mode || 'none')
+    } catch {
+      setDirectConnected(false)
+      setDirectMode('none')
+    }
+  }, [])
 
   useEffect(() => {
     const hash = window.location.hash
@@ -40,8 +66,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (token) {
       fetchUserInfo(token)
+    } else {
+      setUser(null)
     }
   }, [token])
+
+  useEffect(() => {
+    refreshDirectStatus()
+  }, [refreshDirectStatus, token])
 
   const fetchUserInfo = async (accessToken) => {
     setLoading(true)
@@ -85,10 +117,39 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('ya_token')
     setToken(null)
     setUser(null)
+    logoutDirectSession().catch(() => {})
+    setDirectConnected(false)
+    setDirectMode('none')
   }, [])
 
+  const getDirectConnectUrl = useCallback(async () => {
+    const payload = await fetchDirectConnectUrl()
+    return payload.authorizeUrl
+  }, [])
+
+  const connectDirectWithCode = useCallback(async (code) => {
+    await exchangeDirectVerificationCode(code)
+    await refreshDirectStatus()
+  }, [refreshDirectStatus])
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, logout, isDemo: !token, redirectUri: REDIRECT_URI }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        error,
+        login,
+        logout,
+        isDemo: !token,
+        redirectUri: REDIRECT_URI,
+        directConnected,
+        directMode,
+        getDirectConnectUrl,
+        connectDirectWithCode,
+        refreshDirectStatus,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

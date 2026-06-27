@@ -12,7 +12,7 @@ import { adaptDirectCampaigns, getPortfolioBudget } from '../lib/directAdapter'
 import { generateRecommendations } from '../lib/recommendations'
 
 export function useAgentStore() {
-  const { token } = useAuth()
+  const { token, user, directConnected } = useAuth()
   const [campaigns, setCampaigns] = useState(INITIAL_CAMPAIGNS)
   const [recommendations, setRecommendations] = useState([])
   const [agentRunning, setAgentRunning] = useState(false)
@@ -32,7 +32,7 @@ export function useAgentStore() {
   }, [])
 
   const loadDirectCampaigns = useCallback(async ({ sync = false } = {}) => {
-    if (!token || !hasDirectConnector()) {
+    if (!hasDirectConnector()) {
       return null
     }
 
@@ -49,7 +49,7 @@ export function useAgentStore() {
   }, [token])
 
   useEffect(() => {
-    if (!token || !hasDirectConnector()) {
+    if (!hasDirectConnector() || !user || !directConnected) {
       setDataSource('demo')
       return
     }
@@ -65,7 +65,7 @@ export function useAgentStore() {
         setDataSource('demo')
         log(`Не удалось загрузить кампании из Direct connector: ${error.message}`, 'warning')
       })
-  }, [token, loadDirectCampaigns, log])
+  }, [directConnected, loadDirectCampaigns, log, user])
 
   const runAgentCycle = useCallback(async () => {
     if (agentRunning) return
@@ -75,12 +75,12 @@ export function useAgentStore() {
     try {
       let updatedCampaigns = []
 
-      if (token && hasDirectConnector()) {
+      if (hasDirectConnector() && user && directConnected) {
         log('Получаю данные из Direct connector...', 'info')
         updatedCampaigns = await loadDirectCampaigns({ sync: true }) || []
       } else {
         await sleep(800)
-        log('Direct connector не настроен. Работаю в demo-режиме на mock-данных.', 'warning')
+        log('Direct connector не подключён для текущего пользователя. Работаю в demo-режиме на mock-данных.', 'warning')
         await sleep(600)
 
         setCampaigns(prev => {
@@ -159,13 +159,13 @@ export function useAgentStore() {
     } finally {
       setAgentRunning(false)
     }
-  }, [agentRunning, loadDirectCampaigns, log, token])
+  }, [agentRunning, directConnected, loadDirectCampaigns, log, user])
 
   const applyRecommendation = useCallback(async (recId) => {
     const rec = recommendations.find(r => r.id === recId)
     if (!rec || rec.applied) return
 
-    if (token && hasDirectConnector() && (rec.action === 'pause' || rec.action === 'resume')) {
+    if (hasDirectConnector() && directConnected && (rec.action === 'pause' || rec.action === 'resume')) {
       try {
         if (rec.action === 'pause') {
           await suspendDirectCampaign(token, rec.campaignId)
@@ -197,7 +197,7 @@ export function useAgentStore() {
 
     setRecommendations(prev => prev.map(r => r.id === recId ? { ...r, applied: true } : r))
     log(`Применена рекомендация: "${rec.title}"`, 'success')
-  }, [recommendations, loadDirectCampaigns, log, token])
+  }, [recommendations, loadDirectCampaigns, log, directConnected, token])
 
   const createCampaign = useCallback((formData) => {
     const newCampaign = {
