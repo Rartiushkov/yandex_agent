@@ -1,13 +1,31 @@
 import Sidebar from './components/Sidebar'
 import AuthBar from './components/AuthBar'
+import LoginScreen from './pages/LoginScreen'
 import Dashboard from './pages/Dashboard'
 import Campaigns from './pages/Campaigns'
 import Analytics from './pages/Analytics'
 import Agent from './pages/Agent'
 import { useAgentStore } from './store/agentStore'
+import { useAuth } from './context/AuthContext'
 
 export default function App() {
   const store = useAgentStore()
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-400">
+          <div className="w-5 h-5 border-2 border-gray-600 border-t-yandex-red rounded-full animate-spin" />
+          Загрузка...
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <LoginScreen />
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-950">
