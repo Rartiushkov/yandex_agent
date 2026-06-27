@@ -145,5 +145,19 @@ export function generateRecommendations(campaigns) {
     }
   })
 
+  if (recs.length === 0 && campaigns.length === 1) {
+    const [campaign] = campaigns
+    recs.push({
+      id: `rec_${campaign.id}_single_campaign`,
+      campaignId: campaign.id,
+      type: 'info',
+      title: `Недостаточно данных для сравнения: ${campaign.name}`,
+      message: 'Сейчас в портфеле только одна кампания, поэтому агенту не с чем сравнивать эффективность внутри аккаунта. Добавь еще 1-2 тестовые кампании или накопи больше истории, чтобы рекомендации стали точнее.',
+      action: 'review',
+      delta: 0,
+      applied: false,
+    })
+  }
+
   return recs
 }

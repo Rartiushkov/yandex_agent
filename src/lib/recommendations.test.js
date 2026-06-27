@@ -41,6 +41,31 @@ describe('generateRecommendations', () => {
     expect(recs.some(rec => rec.campaignId === '1' && rec.id.includes('low_sample'))).toBe(true)
   })
 
+  it('creates fallback recommendation for single campaign portfolio', () => {
+    const campaigns = [
+      {
+        id: '1',
+        name: 'Only Campaign',
+        status: 'active',
+        budget: 5000,
+        spent: 3000,
+        impressions: 5000,
+        clicks: 120,
+        conversions: 6,
+        roas: 4.2,
+        cpo: 500,
+        history: [
+          { date: '25.06', spend: 900, clicks: 35, conversions: 2, cpc: 25.7 },
+          { date: '26.06', spend: 1100, clicks: 45, conversions: 2, cpc: 24.4 },
+          { date: '27.06', spend: 1000, clicks: 40, conversions: 2, cpc: 25.0 },
+        ],
+      },
+    ]
+
+    const recs = generateRecommendations(campaigns)
+    expect(recs.some(rec => rec.id.includes('single_campaign'))).toBe(true)
+  })
+
   it('creates pause recommendation for weak campaign', () => {
     const campaigns = [
       { id: '1', name: 'Weak', status: 'active', budget: 10000, spent: 8000, roas: 1, cpo: 500 },
