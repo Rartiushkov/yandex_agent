@@ -16,17 +16,11 @@ services:
         value: sandbox
       - key: YANDEX_DIRECT_READ_ONLY
         value: "true"
-      - key: YANDEX_DIRECT_OAUTH_CLIENT_ID_SANDBOX
+      - key: YANDEX_DIRECT_OAUTH_CLIENT_ID
         sync: false
-      - key: YANDEX_DIRECT_OAUTH_CLIENT_SECRET_SANDBOX
+      - key: YANDEX_DIRECT_OAUTH_CLIENT_SECRET
         sync: false
-      - key: YANDEX_DIRECT_OAUTH_CLIENT_ID_PRODUCTION
-        sync: false
-      - key: YANDEX_DIRECT_OAUTH_CLIENT_SECRET_PRODUCTION
-        sync: false
-      - key: YANDEX_DIRECT_MASTER_TOKEN_SANDBOX
-        sync: false
-      - key: YANDEX_DIRECT_MASTER_TOKEN_PRODUCTION
+      - key: YANDEX_DIRECT_MASTER_TOKEN
         sync: false
       - key: YANDEX_DIRECT_CLIENT_LOGIN
         sync: false

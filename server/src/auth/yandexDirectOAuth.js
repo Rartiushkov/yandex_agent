@@ -3,47 +3,37 @@ const DIRECT_OAUTH_TOKEN_URL = 'https://oauth.yandex.ru/token'
 
 export const DIRECT_ENVIRONMENTS = ['sandbox', 'production']
 
-function normalizeMode(mode) {
+export function normalizeMode(mode) {
   return mode === 'production' ? 'production' : 'sandbox'
 }
 
-function pickConfig(mode) {
-  if (mode === 'production') {
-    return {
-      clientId: process.env.YANDEX_DIRECT_OAUTH_CLIENT_ID_PRODUCTION || process.env.YANDEX_DIRECT_OAUTH_CLIENT_ID || '',
-      clientSecret: process.env.YANDEX_DIRECT_OAUTH_CLIENT_SECRET_PRODUCTION || process.env.YANDEX_DIRECT_OAUTH_CLIENT_SECRET || '',
-    }
-  }
-
+function getAppCredentials() {
   return {
-    clientId: process.env.YANDEX_DIRECT_OAUTH_CLIENT_ID_SANDBOX || process.env.YANDEX_DIRECT_OAUTH_CLIENT_ID || '',
-    clientSecret: process.env.YANDEX_DIRECT_OAUTH_CLIENT_SECRET_SANDBOX || process.env.YANDEX_DIRECT_OAUTH_CLIENT_SECRET || '',
+    clientId: process.env.YANDEX_DIRECT_OAUTH_CLIENT_ID || '',
+    clientSecret: process.env.YANDEX_DIRECT_OAUTH_CLIENT_SECRET || '',
   }
 }
 
 export function getDirectOauthConfig(mode) {
-  const normalized = normalizeMode(mode)
   return {
-    mode: normalized,
-    ...pickConfig(normalized),
+    mode: normalizeMode(mode),
+    ...getAppCredentials(),
   }
 }
 
 export function getDirectOauthMatrix() {
+  const { clientId, clientSecret } = getAppCredentials()
+  const configured = Boolean(clientId && clientSecret)
   return DIRECT_ENVIRONMENTS.reduce((acc, mode) => {
-    const config = getDirectOauthConfig(mode)
-    acc[mode] = {
-      clientId: config.clientId,
-      configured: Boolean(config.clientId && config.clientSecret),
-    }
+    acc[mode] = { clientId, configured }
     return acc
   }, {})
 }
 
 export function buildDirectAuthorizeUrl(mode) {
-  const { clientId, mode: normalized } = getDirectOauthConfig(mode)
+  const { clientId } = getAppCredentials()
   if (!clientId) {
-    const error = new Error(`Direct OAuth app is not configured on backend for ${normalized}`)
+    const error = new Error('Direct OAuth app is not configured on backend (YANDEX_DIRECT_OAUTH_CLIENT_ID missing)')
     error.statusCode = 500
     throw error
   }
