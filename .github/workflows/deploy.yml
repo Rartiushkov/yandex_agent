@@ -32,6 +32,10 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_DIRECT_API_BASE_URL: ${{ vars.VITE_DIRECT_API_BASE_URL }}
+          VITE_DIRECT_CLIENT_LOGIN: ${{ vars.VITE_DIRECT_CLIENT_LOGIN }}
+          VITE_YANDEX_REDIRECT_URI: https://rartiushkov.github.io/yandex_agent/
         run: npm run build
 
       - name: Setup Pages
