@@ -84,7 +84,7 @@ export async function directReportRequest(url, { token, clientLogin, payload }) 
     }
 
     const text = await response.text()
-    const error = new Error(`Direct report request failed with ${response.status}`)
+    const error = new Error(`Direct report request failed with ${response.status}: ${text}`)
     error.statusCode = response.status
     error.detail = text
     throw error
