@@ -70,7 +70,7 @@ export default function AuthBar() {
               </div>
               <div className={`leading-tight flex items-center gap-1 ${directConnected ? 'text-green-300' : 'text-yellow-400'}`}>
                 <Wifi size={10} />
-                {directConnected ? `Direct API подключён (${directMode})` : 'Direct API не подключён'}
+                {directConnected ? `Direct API подключён (${directMode}, read-only)` : 'Direct API не подключён'}
               </div>
             </div>
           </div>

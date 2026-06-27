@@ -31,7 +31,7 @@ export default function App() {
             </span>
             <span>
               {store.dataSource === 'direct'
-                ? 'Данные загружаются из backend-коннектора.'
+                ? 'Данные загружаются из backend-коннектора. Режим read-only.'
                 : 'Агент использует mock-данные.'}
             </span>
             {store.syncError && (

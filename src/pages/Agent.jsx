@@ -72,6 +72,10 @@ export default function Agent({ recommendations, agentRunning, agentLog, runAgen
         </div>
       </div>
 
+      <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-sm text-blue-200">
+        Агент работает в режиме рекомендаций: реальные данные тянутся из Яндекс.Директа, но боевые изменения в рекламных кампаниях отключены.
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -113,12 +117,12 @@ export default function Agent({ recommendations, agentRunning, agentLog, runAgen
                     onClick={() => applyRecommendation(rec.id)}
                     className="mt-4 w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 text-sm text-white font-medium transition-all border border-white/10"
                   >
-                    Применить
+                    Отметить как сценарий
                   </button>
                 )}
                 {rec.applied && (
                   <div className="mt-4 w-full py-2 rounded-xl bg-green-500/10 text-sm text-green-400 font-medium text-center border border-green-500/20">
-                    ✓ Применено
+                    ✓ Сценарий сохранён
                   </div>
                 )}
               </div>
@@ -148,7 +152,7 @@ export default function Agent({ recommendations, agentRunning, agentLog, runAgen
             { step: '1', title: 'Сбор данных', desc: 'Получает статистику из Яндекс.Директ API каждые N минут' },
             { step: '2', title: 'Анализ KPI', desc: 'Вычисляет CPC, CPO, CPM, ROAS, CR для каждой кампании' },
             { step: '3', title: 'Выявление аномалий', desc: 'Сравнивает метрики с целевыми значениями и историей' },
-            { step: '4', title: 'Оптимизация', desc: 'Перераспределяет бюджет в пользу эффективных кампаний' },
+            { step: '4', title: 'Рекомендации', desc: 'Формирует сценарии оптимизации без автоматического изменения боевых кампаний' },
           ].map(item => (
             <div key={item.step} className="text-center p-4 rounded-xl bg-gray-800/50">
               <div className="w-8 h-8 rounded-full bg-yandex-red/20 text-yandex-red text-sm font-bold flex items-center justify-center mx-auto mb-2">

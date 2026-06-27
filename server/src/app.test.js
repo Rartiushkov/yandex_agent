@@ -95,6 +95,7 @@ describe('server app', () => {
   })
 
   it('allows suspend route with token', async () => {
+    process.env.YANDEX_DIRECT_READ_ONLY = 'false'
     const app = createApp()
     const server = app.listen()
 
@@ -107,6 +108,25 @@ describe('server app', () => {
         },
       })
       expect(response.status).toBe(200)
+    } finally {
+      delete process.env.YANDEX_DIRECT_READ_ONLY
+      server.close()
+    }
+  })
+
+  it('blocks campaign actions in read-only mode', async () => {
+    const app = createApp()
+    const server = app.listen()
+
+    try {
+      const address = server.address()
+      const response = await fetch(`http://127.0.0.1:${address.port}/campaigns/1/suspend`, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer token',
+        },
+      })
+      expect(response.status).toBe(403)
     } finally {
       server.close()
     }

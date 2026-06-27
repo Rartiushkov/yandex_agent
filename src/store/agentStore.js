@@ -4,8 +4,6 @@ import { useAuth } from '../context/AuthContext'
 import {
   fetchDirectCampaigns,
   hasDirectConnector,
-  resumeDirectCampaign,
-  suspendDirectCampaign,
   syncDirectCampaigns,
 } from '../api/directApi'
 import { adaptDirectCampaigns, getPortfolioBudget } from '../lib/directAdapter'
@@ -165,23 +163,6 @@ export function useAgentStore() {
     const rec = recommendations.find(r => r.id === recId)
     if (!rec || rec.applied) return
 
-    if (hasDirectConnector() && directConnected && (rec.action === 'pause' || rec.action === 'resume')) {
-      try {
-        if (rec.action === 'pause') {
-          await suspendDirectCampaign(token, rec.campaignId)
-        }
-        if (rec.action === 'resume') {
-          await resumeDirectCampaign(token, rec.campaignId)
-        }
-
-        await loadDirectCampaigns({ sync: true })
-      } catch (error) {
-        setSyncError(error.message)
-        log(`Не удалось применить действие в Direct connector: ${error.message}`, 'danger')
-        return
-      }
-    }
-
     setCampaigns(prev => prev.map(c => {
       if (c.id === rec.campaignId) {
         if (rec.action === 'pause') return { ...c, status: 'paused' }
@@ -196,8 +177,8 @@ export function useAgentStore() {
     }))
 
     setRecommendations(prev => prev.map(r => r.id === recId ? { ...r, applied: true } : r))
-    log(`Применена рекомендация: "${rec.title}"`, 'success')
-  }, [recommendations, loadDirectCampaigns, log, directConnected, token])
+    log(`Рекомендация сохранена как сценарий: "${rec.title}". Боевые изменения в Direct отключены.`, 'success')
+  }, [recommendations, log])
 
   const createCampaign = useCallback((formData) => {
     const newCampaign = {

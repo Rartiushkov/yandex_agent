@@ -26,6 +26,10 @@ function getClientLogin(req) {
   return req.headers['x-direct-client-login'] || process.env.YANDEX_DIRECT_CLIENT_LOGIN || null
 }
 
+function isReadOnlyMode() {
+  return process.env.YANDEX_DIRECT_READ_ONLY !== 'false'
+}
+
 export function createApp() {
   const app = express()
 
@@ -43,6 +47,7 @@ export function createApp() {
       hasDefaultClientLogin: Boolean(process.env.YANDEX_DIRECT_CLIENT_LOGIN),
       hasMasterToken: Boolean(process.env.YANDEX_DIRECT_MASTER_TOKEN),
       hasOauthApp: Boolean(oauthConfig.clientId && oauthConfig.clientSecret),
+      readOnly: isReadOnlyMode(),
     })
   })
 
@@ -123,6 +128,11 @@ export function createApp() {
   app.post('/campaigns/sync', handleCampaignSnapshot)
 
   async function handleCampaignAction(req, res, action) {
+    if (isReadOnlyMode()) {
+      res.status(403).json({ error: 'Direct connector is running in read-only mode' })
+      return
+    }
+
     const token = getToken(req)
     if (!token) {
       res.status(401).json({ error: 'Missing Direct API token' })
